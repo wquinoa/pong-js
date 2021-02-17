@@ -1,13 +1,13 @@
 const PAD_COL = "WHITE";
 const PUCK_COL = "WHITE"
 const BACKGROUND = "BLACK";
-const DIFFICULTY = 0.1;
+const DIFFICULTY = 0.08;
 const PAD_SIZE = 100;
 
 const cvs = document.getElementById("scene");
 const ctx = cvs.getContext("2d");
 const screenBox = cvs.getBoundingClientRect();
-ctx.font = "45px monospace";
+ctx.font = "64px Courier";
 
 class Player {
   constructor(posX) {
@@ -47,15 +47,18 @@ class AI extends Player {
 }
 
 class Puck {
-  constructor() { this.reset(); }
+  constructor() {
+    this.dx = 5;
+    this.dy = 5;
+    this.reset();
+  }
 
   reset() {
     this.x = cvs.width / 2;
     this.y = cvs.height / 2;
-    this.r = 10;
-    this.speed = 5;
-    this.dx = 5;
-    this.dy = 5;
+    this.r = 8;
+    this.speed = 8;
+    this.dx = -this.dx;
   }
 
   move() {
@@ -72,13 +75,27 @@ class Puck {
     // collide with walls: reverse y dir
     if (this.y + this.r >= cvs.height || this.y - this.r <= 0){
       this.dy = -this.dy;
+      return -1;
     }
 
     //collide with players: reverse x dir
-    if (this.right > plr.left && this.bottom > plr.top &&
+    else if (this.right > plr.left && this.bottom > plr.top &&
         this.left < plr.right && this.top < plr.bottom) {
-        this.dx = -this.dx;
+        //this.dx = -this.dx;
+        let point = this.y - (plr.y + plr.height/2);
+        point /= plr.height / 2;
+
+        this.adjustDirection(point);
+        this.speed += DIFFICULTY;
     }
+  }
+
+  adjustDirection(point) {
+    let alpha = point * (Math.PI / 4);
+    let dir = (this.x < cvs.width / 2) ? 1 : -1;
+
+    this.dx = this.speed * Math.cos(alpha) * dir;
+    this.dy = this.speed * Math.sin(alpha);
   }
 }
 
@@ -89,7 +106,6 @@ const sep = {
   height: 10
 };
 
-
 var p1 = new User(5);
 var p2 = new AI(cvs.width - 15);
 var puck = new Puck();
@@ -99,15 +115,15 @@ function drawBackground(){
   ctx.fillRect(0, 0, cvs.width, cvs.height);
 
   // draw separator
-  ctx.fillStyle = "#555";
+  ctx.fillStyle = "grey";
   for (let i = 0; i <= cvs.height; i += 15){
     ctx.fillRect(sep.x, i, sep.width, sep.height);
   }
 
   // add score
   ctx.fillStyle = "white";
-  ctx.fillText(p1.score, cvs.width / 4, cvs.height / 5);
-  ctx.fillText(p2.score, 3 * cvs.width / 4, cvs.height / 5);
+  ctx.fillText(p2.score, cvs.width / 4 - 32, cvs.height / 6);
+  ctx.fillText(p1.score, 3 * cvs.width / 4 - 32, cvs.height / 6);
 }
 
 function drawPaddle(paddle){
@@ -131,8 +147,12 @@ function update() {
   p2.move(puck);
 
   let player = (puck.x < cvs.width / 2) ? p1 : p2;
-
   puck.collide(player);
+
+  if (puck.x < 0 || puck.x > cvs.width) {
+    ++player.score;
+    puck.reset();
+  }
 }
 
 function render() {
